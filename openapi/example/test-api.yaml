@@ -1,0 +1,307 @@
+openapi: 3.1.0
+info:
+  title: JMeter DTO Test Service
+  description: Tiny FastAPI service with DTO-rich endpoints for JMeter/OpenAPI testing.
+  version: 0.1.0
+paths:
+  /api/auth/token:
+    post:
+      tags:
+      - auth
+      summary: Get an access token
+      operationId: get_token_api_auth_token_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRequestDto'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponseDto'
+  /api/items/{item_id}:
+    get:
+      tags:
+      - items
+      summary: Get an item
+      operationId: get_item_api_items__item_id__get
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          examples:
+          - 1001
+          title: Item Id
+      - name: include_tags
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Include Tags
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemDto'
+  /api/orders:
+    post:
+      tags:
+      - orders
+      summary: Create an order
+      operationId: create_order_api_orders_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequestDto'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponseDto'
+  /api/orders/{order_id}/documents:
+    post:
+      tags:
+      - orders
+      summary: Upload a raw document to an order
+      operationId: upload_order_document_api_orders__order_id__documents_post
+      parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: string
+          examples:
+          - ord-1001-2
+          title: Order Id
+      - name: mimeContentId
+        in: header
+        required: false
+        description: Optional client generated id of the document content, echoed in the response when sent.
+        schema:
+          type: string
+          examples:
+          - 3f2b8c1e-7d4a-4f6b-9a0e-1c2d3e4f5a6b
+          title: Mime Content Id
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDto'
+components:
+  schemas:
+    TokenRequestDto:
+      properties:
+        grant_type:
+          type: string
+          enum:
+          - password
+          title: Grant Type
+        username:
+          type: string
+          title: Username
+          examples:
+          - test-user
+        password:
+          type: string
+          format: password
+          title: Password
+        scope:
+          type: string
+          title: Scope
+          examples:
+          - orders
+      type: object
+      required:
+      - grant_type
+      - username
+      - password
+      title: TokenRequestDto
+    TokenResponseDto:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          examples:
+          - bearer
+        expires_in:
+          type: integer
+          title: Expires In
+          examples:
+          - 3600
+      type: object
+      required:
+      - access_token
+      - token_type
+      title: TokenResponseDto
+    DocumentDto:
+      properties:
+        document_id:
+          type: string
+          title: Document Id
+          examples:
+          - doc-1
+        order_id:
+          type: string
+          title: Order Id
+          examples:
+          - ord-1001-2
+        mime_content_id:
+          type: string
+          title: Mime Content Id
+          examples:
+          - 3f2b8c1e-7d4a-4f6b-9a0e-1c2d3e4f5a6b
+        size_bytes:
+          type: integer
+          title: Size Bytes
+          examples:
+          - 64
+      type: object
+      required:
+      - document_id
+      - order_id
+      - size_bytes
+      title: DocumentDto
+    CreateOrderRequestDto:
+      properties:
+        customer_id:
+          type: string
+          maxLength: 40
+          minLength: 3
+          title: Customer Id
+          examples:
+          - customer-123
+        lines:
+          items:
+            $ref: '#/components/schemas/OrderLineDto'
+          type: array
+          minItems: 1
+          title: Lines
+        priority:
+          type: boolean
+          title: Priority
+          default: false
+      type: object
+      required:
+      - customer_id
+      - lines
+      title: CreateOrderRequestDto
+    CreateOrderResponseDto:
+      properties:
+        order_id:
+          type: string
+          title: Order Id
+          examples:
+          - ord-1001-2
+        accepted:
+          type: boolean
+          title: Accepted
+        line_count:
+          type: integer
+          title: Line Count
+        total_quantity:
+          type: integer
+          title: Total Quantity
+        processing_ms:
+          type: integer
+          title: Processing Ms
+      type: object
+      required:
+      - order_id
+      - accepted
+      - line_count
+      - total_quantity
+      - processing_ms
+      title: CreateOrderResponseDto
+    ItemDto:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 1001
+        sku:
+          type: string
+          title: Sku
+          examples:
+          - JMTR-1001
+        name:
+          type: string
+          title: Name
+          examples:
+          - Load Test Widget
+        status:
+          $ref: '#/components/schemas/ItemStatus'
+        price:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Price
+          examples:
+          - 19.95
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+          examples:
+          - - jmeter
+            - demo
+      type: object
+      required:
+      - id
+      - sku
+      - name
+      - status
+      - price
+      title: ItemDto
+    ItemStatus:
+      type: string
+      enum:
+      - available
+      - backordered
+      - discontinued
+      title: ItemStatus
+    OrderLineDto:
+      properties:
+        item_id:
+          type: integer
+          title: Item Id
+          examples:
+          - 1001
+        quantity:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Quantity
+          examples:
+          - 2
+      type: object
+      required:
+      - item_id
+      - quantity
+      title: OrderLineDto

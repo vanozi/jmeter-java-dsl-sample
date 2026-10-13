@@ -1,4 +1,4 @@
-package us.abstracta.jmeter.javadsl.sample;
+package example.tests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static us.abstracta.jmeter.javadsl.JmeterDsl.*;
