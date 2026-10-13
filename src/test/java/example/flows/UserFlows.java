@@ -23,8 +23,12 @@ public final class UserFlows {
    * Gets an access token on every iteration.
    */
   public static DslTransactionController login() {
+    return login(AuthEndpoints.DEFAULT_USERNAME, AuthEndpoints.DEFAULT_PASSWORD);
+  }
+
+  public static DslTransactionController login(String username, String password) {
     return transaction("login",
-        AuthEndpoints.getToken()
+        AuthEndpoints.getToken(username, password, null)
     );
   }
 
@@ -39,8 +43,12 @@ public final class UserFlows {
   }
 
   public static DslTransactionController browseItem() {
+    return browseItem(Payloads.DEFAULT_ITEM_ID);
+  }
+
+  public static DslTransactionController browseItem(Object itemId) {
     return transaction("browse item",
-        ItemEndpoints.getItem(Payloads.DEFAULT_ITEM_ID, true)
+        ItemEndpoints.getItem(itemId, true)
     );
   }
 

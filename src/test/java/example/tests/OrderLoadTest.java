@@ -3,6 +3,13 @@ package example.tests;
 import static org.assertj.core.api.Assertions.assertThat;
 import static us.abstracta.jmeter.javadsl.JmeterDsl.testPlan;
 import static us.abstracta.jmeter.javadsl.JmeterDsl.threadGroup;
+import static us.abstracta.jmeter.javadsl.JmeterDsl.csvDataSet;
+import static us.abstracta.jmeter.javadsl.JmeterDsl.htmlReporter;
+import static us.abstracta.jmeter.javadsl.JmeterDsl.jtlWriter;
+import static us.abstracta.jmeter.javadsl.JmeterDsl.throughputTimer;
+import static us.abstracta.jmeter.javadsl.JmeterDsl.uniformRandomTimer;
+import static common.JmeterVars.ref;
+import static example.endpoints.Vars.ITEM_ID;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -10,6 +17,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import us.abstracta.jmeter.javadsl.core.TestPlanStats;
 import common.TestConfig;
+import common.TestResources;
 import example.flows.UserFlows;
 
 public class OrderLoadTest {
@@ -21,20 +29,35 @@ public class OrderLoadTest {
         TestConfig.defaults(),
         // each call to a factory method creates a new sampler, so reusing them across thread
         // groups is safe
-        threadGroup("browsers", 10, 20,
-            UserFlows.browseItem()
-        ),
-        threadGroup("buyers", 2, 10,
-            UserFlows.loginOnce(),
-            UserFlows.placeOrder(),
-            UserFlows.placePriorityOrder()
-        ),
+        threadGroup("browsers")
+            .rampToAndHold(10, Duration.ofSeconds(10), Duration.ofSeconds(30))
+            .children(
+                csvDataSet(TestResources.path("example/data/browsers.csv")),
+                // simulates a user waiting between 1 and 3 seconds before each request
+                uniformRandomTimer(Duration.ofSeconds(1), Duration.ofSeconds(3)),
+                UserFlows.browseItem(ref(ITEM_ID))
+            ),
+        threadGroup("buyers")
+            .rampToAndHold(2, Duration.ofSeconds(5), Duration.ofSeconds(20))
+            .children(
+                csvDataSet(TestResources.path("example/data/buyers.csv")),
+                // limits all samplers in this group together to 30 samples per minute
+                throughputTimer(30),
+                UserFlows.login(ref("USERNAME"), ref("PASSWORD")),
+                UserFlows.placeOrder(),
+                UserFlows.placePriorityOrder()
+            ),
         threadGroup("uploaders", 1, 5,
-            UserFlows.loginOnce(),
+            csvDataSet(TestResources.path("example/data/uploaders.csv")),
+            UserFlows.login(ref("USERNAME"), ref("PASSWORD")),
             // any file under src/test/resources
             UserFlows.placeOrderWithDocument("example/uploads/scan.bin"),
-            UserFlows.placeOrderWithDocument("example/uploads/scan.bin", "scan-001")
-        )
+            UserFlows.placeOrderWithDocument("example/uploads/scan.bin", ref("MIME_CONTENT_ID"))
+        ),
+        // raw request results for analysis in JMeter or another results tool
+        jtlWriter("target/jmeter-results.jtl"),
+        // creates a uniquely named standalone report after the test run
+        htmlReporter("target/jmeter-reports")
     ).run();
 
     assertThat(stats.overall().errorsCount()).isZero();
